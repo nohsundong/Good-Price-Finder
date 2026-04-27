@@ -5,7 +5,8 @@
  * 착한가격업소 찾기 API
  * OpenAPI spec version: 0.1.0
  */
+import type { StoreInput } from "./storeInput";
 
-export interface HealthStatus {
-  status: string;
-}
+export type ImportStoresBody = {
+  stores: StoreInput[];
+};
