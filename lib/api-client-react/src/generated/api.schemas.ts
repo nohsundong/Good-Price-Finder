@@ -83,6 +83,10 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type DeleteStore200 = {
+  deleted: number;
+};
+
 export type ImportStoresBody = {
   stores: StoreInput[];
 };

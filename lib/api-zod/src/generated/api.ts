@@ -51,6 +51,51 @@ export const GetStoresStatsResponse = zod.object({
 });
 
 /**
+ * @summary 업소 정보 수정 (관리자)
+ */
+export const UpdateStoreParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateStoreBody = zod.object({
+  externalId: zod.number().nullish(),
+  category: zod.string(),
+  name: zod.string(),
+  mainItem: zod.string(),
+  price: zod.number(),
+  phone: zod.string().nullish(),
+  address: zod.string(),
+  latitude: zod.number(),
+  longitude: zod.number(),
+  naverMapUrl: zod.string().nullish(),
+});
+
+export const UpdateStoreResponse = zod.object({
+  id: zod.number(),
+  externalId: zod.number().nullable().describe("원본 데이터의 번호"),
+  category: zod.string().describe("업종명"),
+  name: zod.string().describe("업소명"),
+  mainItem: zod.string().describe("주요품목"),
+  price: zod.number().describe("가격(원)"),
+  phone: zod.string().nullable().describe("업소 전화번호"),
+  address: zod.string().describe("주소"),
+  latitude: zod.number().describe("위도"),
+  longitude: zod.number().describe("경도"),
+  naverMapUrl: zod.string().nullable().describe("네이버지도 URL"),
+});
+
+/**
+ * @summary 업소 삭제 (관리자)
+ */
+export const DeleteStoreParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteStoreResponse = zod.object({
+  deleted: zod.number(),
+});
+
+/**
  * 엑셀에서 파싱된 업소 데이터를 받아 전체 데이터를 교체
  * @summary 엑셀 데이터로 업소 일괄 교체 (관리자)
  */

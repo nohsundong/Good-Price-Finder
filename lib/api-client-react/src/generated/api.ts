@@ -17,11 +17,13 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  DeleteStore200,
   ErrorResponse,
   HealthStatus,
   ImportStores200,
   ImportStoresBody,
   Store,
+  StoreInput,
   StoresStats,
 } from "./api.schemas";
 
@@ -259,6 +261,177 @@ export function useGetStoresStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary 업소 정보 수정 (관리자)
+ */
+export const getUpdateStoreUrl = (id: number) => {
+  return `/api/stores/${id}`;
+};
+
+export const updateStore = async (
+  id: number,
+  storeInput: StoreInput,
+  options?: RequestInit,
+): Promise<Store> => {
+  return customFetch<Store>(getUpdateStoreUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(storeInput),
+  });
+};
+
+export const getUpdateStoreMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateStore>>,
+    TError,
+    { id: number; data: BodyType<StoreInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateStore>>,
+  TError,
+  { id: number; data: BodyType<StoreInput> },
+  TContext
+> => {
+  const mutationKey = ["updateStore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateStore>>,
+    { id: number; data: BodyType<StoreInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateStore(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateStoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateStore>>
+>;
+export type UpdateStoreMutationBody = BodyType<StoreInput>;
+export type UpdateStoreMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary 업소 정보 수정 (관리자)
+ */
+export const useUpdateStore = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateStore>>,
+    TError,
+    { id: number; data: BodyType<StoreInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateStore>>,
+  TError,
+  { id: number; data: BodyType<StoreInput> },
+  TContext
+> => {
+  return useMutation(getUpdateStoreMutationOptions(options));
+};
+
+/**
+ * @summary 업소 삭제 (관리자)
+ */
+export const getDeleteStoreUrl = (id: number) => {
+  return `/api/stores/${id}`;
+};
+
+export const deleteStore = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteStore200> => {
+  return customFetch<DeleteStore200>(getDeleteStoreUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteStoreMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteStore>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteStore>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteStore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteStore>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteStore(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteStoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteStore>>
+>;
+
+export type DeleteStoreMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary 업소 삭제 (관리자)
+ */
+export const useDeleteStore = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteStore>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteStore>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteStoreMutationOptions(options));
+};
 
 /**
  * 엑셀에서 파싱된 업소 데이터를 받아 전체 데이터를 교체

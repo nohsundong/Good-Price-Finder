@@ -1,11 +1,16 @@
 import { Router, type IRouter } from "express";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { db, storesTable, type InsertStore } from "@workspace/db";
 import {
   ListStoresResponse,
   GetStoresStatsResponse,
   ImportStoresBody,
   ImportStoresResponse,
+  UpdateStoreBody,
+  UpdateStoreResponse,
+  DeleteStoreResponse,
+  UpdateStoreParams,
+  DeleteStoreParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -65,6 +70,86 @@ router.get("/stores/stats", async (req, res): Promise<void> => {
       lastUpdated: lastUpdated ? lastUpdated.toISOString() : null,
     }),
   );
+});
+
+router.patch("/stores/:id", async (req, res): Promise<void> => {
+  const params = UpdateStoreParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "유효하지 않은 ID입니다." });
+    return;
+  }
+
+  const body = UpdateStoreBody.safeParse(req.body);
+  if (!body.success) {
+    req.log.warn({ errors: body.error.message }, "Invalid update payload");
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const s = body.data;
+  const updates: Partial<InsertStore> = {
+    externalId: s.externalId ?? null,
+    category: s.category,
+    name: s.name,
+    mainItem: s.mainItem,
+    price: s.price,
+    phone: s.phone ?? null,
+    address: s.address,
+    latitude: s.latitude,
+    longitude: s.longitude,
+    naverMapUrl: s.naverMapUrl ?? null,
+  };
+
+  const [updated] = await db
+    .update(storesTable)
+    .set(updates)
+    .where(eq(storesTable.id, params.data.id))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "업소를 찾을 수 없습니다." });
+    return;
+  }
+
+  req.log.info({ id: updated.id }, "Store updated");
+
+  res.json(
+    UpdateStoreResponse.parse({
+      id: updated.id,
+      externalId: updated.externalId,
+      category: updated.category,
+      name: updated.name,
+      mainItem: updated.mainItem,
+      price: updated.price,
+      phone: updated.phone,
+      address: updated.address,
+      latitude: updated.latitude,
+      longitude: updated.longitude,
+      naverMapUrl: updated.naverMapUrl,
+    }),
+  );
+});
+
+router.delete("/stores/:id", async (req, res): Promise<void> => {
+  const params = DeleteStoreParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "유효하지 않은 ID입니다." });
+    return;
+  }
+
+  const deleted = await db
+    .delete(storesTable)
+    .where(eq(storesTable.id, params.data.id))
+    .returning({ id: storesTable.id });
+
+  if (deleted.length === 0) {
+    res.status(404).json({ error: "업소를 찾을 수 없습니다." });
+    return;
+  }
+
+  req.log.info({ id: params.data.id }, "Store deleted");
+
+  res.json(DeleteStoreResponse.parse({ deleted: deleted.length }));
 });
 
 router.post("/stores/import", async (req, res): Promise<void> => {

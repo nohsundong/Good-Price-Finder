@@ -7,6 +7,7 @@
  */
 
 export * from "./categoryCount";
+export * from "./deleteStore200";
 export * from "./errorResponse";
 export * from "./healthStatus";
 export * from "./importStores200";

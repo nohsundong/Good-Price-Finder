@@ -130,7 +130,7 @@ export default function Home() {
             </div>
             
             {!statsLoading && stats && (
-              <div className="text-xs font-medium bg-secondary/10 text-secondary-foreground px-2 py-1 rounded-md">
+              <div className="text-xs font-bold bg-primary text-primary-foreground px-2.5 py-1 rounded-md shadow-sm">
                 전국 {stats.total.toLocaleString()}곳
               </div>
             )}
