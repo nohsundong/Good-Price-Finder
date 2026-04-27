@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { read, utils } from "xlsx";
 import { useQueryClient } from "@tanstack/react-query";
-import { Upload, Database, FileSpreadsheet, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Upload, Database, FileSpreadsheet, AlertTriangle, CheckCircle2, ArrowRight, Lock } from "lucide-react";
 import { useImportStores, getListStoresQueryKey, getGetStoresStatsQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -24,7 +24,82 @@ type ParsedStore = {
   naverMapUrl?: string | null;
 };
 
+const ADMIN_PASSWORD = "tbelltassi1!";
+const AUTH_KEY = "good-price-admin-auth";
+
+function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === ADMIN_PASSWORD) {
+      sessionStorage.setItem(AUTH_KEY, "1");
+      onUnlock();
+    } else {
+      setError("비밀번호가 올바르지 않습니다.");
+      setPassword("");
+    }
+  };
+
+  return (
+    <div className="flex-1 p-4 md:p-6 flex items-center justify-center bg-muted/30">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Lock className="h-5 w-5 text-primary" />
+            관리자 인증
+          </CardTitle>
+          <CardDescription>
+            관리자 페이지에 접근하려면 비밀번호를 입력해주세요.
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-password">비밀번호</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError(null);
+                }}
+                autoFocus
+              />
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full" disabled={!password}>
+              확인
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
 export default function Admin() {
+  const [authenticated, setAuthenticated] = useState<boolean>(
+    () => typeof window !== "undefined" && sessionStorage.getItem(AUTH_KEY) === "1",
+  );
+
+  if (!authenticated) {
+    return <PasswordGate onUnlock={() => setAuthenticated(true)} />;
+  }
+
+  return <AdminContent />;
+}
+
+function AdminContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
