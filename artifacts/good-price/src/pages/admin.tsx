@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { read, utils } from "xlsx";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -12,6 +12,7 @@ import {
   Trash2,
   ListOrdered,
   Search,
+  ExternalLink,
 } from "lucide-react";
 import {
   useImportStores,
@@ -510,6 +511,7 @@ function AdminContent() {
                     <TableHead>품목</TableHead>
                     <TableHead className="text-right">가격</TableHead>
                     <TableHead className="hidden md:table-cell">주소</TableHead>
+                    <TableHead className="hidden lg:table-cell">네이버지도</TableHead>
                     <TableHead className="text-right w-[140px]">관리</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -518,7 +520,7 @@ function AdminContent() {
                     <>
                       {[1, 2, 3].map((i) => (
                         <TableRow key={i}>
-                          <TableCell colSpan={6}>
+                          <TableCell colSpan={7}>
                             <Skeleton className="h-6 w-full" />
                           </TableCell>
                         </TableRow>
@@ -528,7 +530,7 @@ function AdminContent() {
                   {!storesLoading && filteredStores.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground py-8"
                       >
                         {stores && stores.length > 0
@@ -550,6 +552,22 @@ function AdminContent() {
                         title={store.address}
                       >
                         {store.address}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell max-w-[200px]">
+                        {store.naverMapUrl ? (
+                          <a
+                            href={store.naverMapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline text-xs truncate max-w-full"
+                            title={store.naverMapUrl}
+                          >
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{store.naverMapUrl}</span>
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">없음</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -677,14 +695,15 @@ function EditStoreDialog({
   const [values, setValues] = useState<EditFormValues | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Initialize form when store changes
-  if (store && values === null) {
-    setValues(storeToForm(store));
-  }
-  if (!store && values !== null) {
-    setValues(null);
-    setFormError(null);
-  }
+  useEffect(() => {
+    if (store) {
+      setValues(storeToForm(store));
+      setFormError(null);
+    } else {
+      setValues(null);
+      setFormError(null);
+    }
+  }, [store]);
 
   if (!store || !values) {
     return (
