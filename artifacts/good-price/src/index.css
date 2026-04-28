@@ -74,52 +74,52 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Warm and clean, public trust vibe */
-  --background: 40 33% 98%; /* Warm off-white */
-  --foreground: 20 14.3% 15%; /* Dark brown-gray */
-  --border: 20 5.9% 90%;
+  /* Cool, clean, public-trust SaaS palette */
+  --background: 220 20% 98.5%;
+  --foreground: 220 25% 12%;
+  --border: 220 14% 92%;
   --card: 0 0% 100%;
-  --card-foreground: 20 14.3% 15%;
-  --card-border: 20 5.9% 90%;
+  --card-foreground: 220 25% 12%;
+  --card-border: 220 14% 92%;
 
-  --sidebar: 40 33% 98%;
-  --sidebar-foreground: 20 14.3% 15%;
-  --sidebar-border: 20 5.9% 90%;
-  --sidebar-primary: 173 58% 39%;
+  --sidebar: 220 20% 98.5%;
+  --sidebar-foreground: 220 25% 12%;
+  --sidebar-border: 220 14% 92%;
+  --sidebar-primary: 168 72% 36%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 24 9.8% 95%;
-  --sidebar-accent-foreground: 20 14.3% 15%;
-  --sidebar-ring: 173 58% 39%;
+  --sidebar-accent: 220 14% 96%;
+  --sidebar-accent-foreground: 220 25% 12%;
+  --sidebar-ring: 168 72% 36%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 20 14.3% 15%;
-  --popover-border: 20 5.9% 90%;
+  --popover-foreground: 220 25% 12%;
+  --popover-border: 220 14% 92%;
 
-  /* Teal for trustworthy, public service vibe */
-  --primary: 173 58% 39%;
+  /* Vivid trust teal */
+  --primary: 168 72% 36%;
   --primary-foreground: 0 0% 100%;
 
-  /* Soft warm orange for accents */
-  --secondary: 32 95% 44%;
+  /* Neutral slate as secondary (used for price emphasis etc.) */
+  --secondary: 220 25% 18%;
   --secondary-foreground: 0 0% 100%;
 
-  --muted: 60 4.8% 95.9%;
-  --muted-foreground: 25 5.3% 44.7%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
 
-  --accent: 60 4.8% 95.9%;
-  --accent-foreground: 20 14.3% 15%;
+  --accent: 220 14% 96%;
+  --accent-foreground: 220 25% 12%;
 
-  --destructive: 0 84.2% 60.2%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 20 5.9% 90%;
-  --ring: 173 58% 39%;
-  
-  --chart-1: 173 58% 39%;
-  --chart-2: 32 95% 44%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
+  --input: 220 14% 92%;
+  --ring: 168 72% 36%;
+
+  --chart-1: 168 72% 36%;
+  --chart-2: 220 70% 50%;
+  --chart-3: 32 95% 44%;
+  --chart-4: 280 60% 55%;
+  --chart-5: 350 75% 55%;
 
   --app-font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   --app-font-serif: Georgia, serif;

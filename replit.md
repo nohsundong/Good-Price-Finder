@@ -58,6 +58,7 @@ Korean web app helping users find nearby cheap restaurants from public open data
 - Admin includes a "정보 수정 제안" panel with tabs (대기 / 확인됨 / 전체), confirm + delete actions.
 - Korean column mapping: 번호, 업종명, 업소명, 주요품목, 가격, 업소 전화번호, 주소, 위도, 경도, 네이버지도URL.
 - Admin password: `tbelltassi1!` (sessionStorage key `good-price-admin-auth`).
+- UI: SaaS-style design with cool teal primary, slate neutrals, sticky slim header, unified search panel (chip filters + segmented sort), polished store cards. Admin uses dashboard layout with stats row + sectioned cards.
 
 ### Codegen note
 `lib/api-spec/package.json` codegen script overwrites `lib/api-zod/src/index.ts` with a single re-export of `./generated/api` to avoid `ImportStoresBody`/`ImportStoresResponse` name collision between zod schemas and the generated types/.

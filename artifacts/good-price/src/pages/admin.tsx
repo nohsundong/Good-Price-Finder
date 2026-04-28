@@ -15,6 +15,9 @@ import {
   ExternalLink,
   Inbox,
   Check,
+  MessageSquare,
+  ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import {
   useImportStores,
@@ -121,46 +124,57 @@ function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
   };
 
   return (
-    <div className="flex-1 p-4 md:p-6 flex items-center justify-center bg-muted/30">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Lock className="h-5 w-5 text-primary" />
+    <div className="flex-1 flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Lock className="h-5 w-5" />
+          </div>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
             관리자 인증
-          </CardTitle>
-          <CardDescription>
+          </h1>
+          <p className="mt-1 text-xs text-muted-foreground">
             관리자 페이지에 접근하려면 비밀번호를 입력해주세요.
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="admin-password">비밀번호</Label>
-              <Input
-                id="admin-password"
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (error) setError(null);
-                }}
-                autoFocus
-              />
+          </p>
+        </div>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm"
+        >
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="admin-password"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              비밀번호
+            </Label>
+            <Input
+              id="admin-password"
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (error) setError(null);
+              }}
+              autoFocus
+              className="h-10"
+            />
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs font-medium text-destructive">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {error}
             </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full" disabled={!password}>
-              확인
-            </Button>
-          </CardFooter>
+          )}
+          <Button
+            type="submit"
+            className="h-10 w-full font-semibold"
+            disabled={!password}
+          >
+            확인
+          </Button>
         </form>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -177,6 +191,157 @@ export default function Admin() {
   }
 
   return <AdminContent />;
+}
+
+function AdminHeader({ storesCount }: { storesCount?: number }) {
+  const handleSignOut = () => {
+    sessionStorage.removeItem(AUTH_KEY);
+    window.location.reload();
+  };
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Database className="h-5 w-5" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+            관리자 대시보드
+          </h1>
+          <p className="text-xs text-muted-foreground md:text-sm">
+            {storesCount !== undefined
+              ? `현재 ${storesCount.toLocaleString()}건의 업소가 등록되어 있습니다.`
+              : "업소 데이터를 관리합니다."}
+          </p>
+        </div>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleSignOut}
+        className="h-9 gap-1.5 text-xs"
+      >
+        <LogOut className="h-3.5 w-3.5" />
+        로그아웃
+      </Button>
+    </div>
+  );
+}
+
+function AdminStatsRow({ storesCount }: { storesCount?: number }) {
+  const { data: suggestions } = useListSuggestions();
+  const pendingCount =
+    suggestions?.filter((s) => s.status === "pending").length ?? 0;
+  const confirmedCount =
+    suggestions?.filter((s) => s.status === "confirmed").length ?? 0;
+
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <StatCard
+        label="등록 업소"
+        value={storesCount?.toLocaleString() ?? "—"}
+        unit="건"
+        icon={<ListOrdered className="h-4 w-4" />}
+        tone="primary"
+      />
+      <StatCard
+        label="대기 중인 제안"
+        value={pendingCount.toLocaleString()}
+        unit="건"
+        icon={<Inbox className="h-4 w-4" />}
+        tone="amber"
+      />
+      <StatCard
+        label="확인된 제안"
+        value={confirmedCount.toLocaleString()}
+        unit="건"
+        icon={<ShieldCheck className="h-4 w-4" />}
+        tone="muted"
+      />
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  unit,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  icon: React.ReactNode;
+  tone: "primary" | "amber" | "muted";
+}) {
+  const toneStyles =
+    tone === "primary"
+      ? "bg-primary/10 text-primary"
+      : tone === "amber"
+        ? "bg-amber-100 text-amber-700"
+        : "bg-muted text-muted-foreground";
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        <span
+          className={`flex h-7 w-7 items-center justify-center rounded-lg ${toneStyles}`}
+        >
+          {icon}
+        </span>
+      </div>
+      <div className="mt-2 flex items-baseline gap-1">
+        <span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+          {value}
+        </span>
+        {unit && (
+          <span className="text-xs font-medium text-muted-foreground">
+            {unit}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminSection({
+  icon,
+  title,
+  description,
+  right,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <header className="flex items-start justify-between gap-3 border-b border-border/70 px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            {icon}
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+            {description && (
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {description}
+              </p>
+            )}
+          </div>
+        </div>
+        {right && <div className="shrink-0">{right}</div>}
+      </header>
+      <div className="px-5 py-5">{children}</div>
+    </section>
+  );
 }
 
 function AdminContent() {
@@ -366,250 +531,286 @@ function AdminContent() {
   });
 
   return (
-    <div className="flex-1 p-4 md:p-6 overflow-y-auto bg-muted/30">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Database className="h-6 w-6 text-primary" />
-            데이터 관리
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            엑셀 데이터로 전체 목록을 갱신하거나, 개별 업소를 수정/삭제할 수 있습니다.
-          </p>
-        </div>
+    <div className="flex-1 bg-muted/30">
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:px-6 md:py-8">
+        <AdminHeader storesCount={stores?.length} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">엑셀 파일 업로드</CardTitle>
-            <CardDescription>
-              네이버지도 URL을 기준으로 기존 데이터와 병합합니다 (있으면 갱신, 없으면 추가). <br />
-              필수 컬럼:{" "}
-              <span className="font-medium text-foreground">
-                업종명, 업소명, 주요품목, 가격, 주소, 위도, 경도
-              </span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-              <Label htmlFor="excel-upload">엑셀 파일 (.xlsx, .xls)</Label>
-              <Input
-                id="excel-upload"
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={handleFileChange}
-                disabled={isParsing || importMutation.isPending}
-              />
+        <AdminStatsRow storesCount={stores?.length} />
+
+        <AdminSection
+          icon={<Upload className="h-4 w-4" />}
+          title="엑셀 데이터 가져오기"
+          description="네이버지도 URL 기준으로 기존 데이터와 병합합니다 (있으면 갱신, 없으면 추가)."
+        >
+          <div className="space-y-4">
+            <div className="rounded-lg border border-dashed border-border bg-muted/40 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <FileSpreadsheet className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="excel-upload"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      엑셀 파일 선택
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      필수 컬럼: 업종명, 업소명, 주요품목, 가격, 주소, 위도, 경도
+                    </p>
+                  </div>
+                </div>
+                <Input
+                  id="excel-upload"
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={handleFileChange}
+                  disabled={isParsing || importMutation.isPending}
+                  className="h-9 w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-foreground file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-background hover:file:bg-foreground/90 sm:w-auto sm:max-w-[260px]"
+                />
+              </div>
             </div>
 
             {error && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>오류</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span className="font-medium">{error}</span>
+              </div>
             )}
 
             {isParsing && (
-              <p className="text-sm text-muted-foreground animate-pulse">
+              <p className="animate-pulse text-sm text-muted-foreground">
                 파일을 분석하는 중...
               </p>
             )}
 
             {parsedData.length > 0 && (
-              <Alert className="bg-primary/5 border-primary/20">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                <AlertTitle className="text-primary">분석 완료</AlertTitle>
-                <AlertDescription className="text-foreground">
-                  총{" "}
-                  <span className="font-bold">
-                    {parsedData.length.toLocaleString()}
-                  </span>
-                  건의 유효한 업소 데이터를 발견했습니다. 기존 데이터를 삭제하고 이 데이터로 교체하시겠습니까?
-                </AlertDescription>
-              </Alert>
+              <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <div className="text-sm text-foreground">
+                    총{" "}
+                    <span className="font-semibold">
+                      {parsedData.length.toLocaleString()}
+                    </span>
+                    건이 분석되었습니다. 기존 데이터와 병합합니다.
+                  </div>
+                </div>
+                <Button
+                  onClick={handleImport}
+                  disabled={importMutation.isPending}
+                  size="sm"
+                  className="h-9 shrink-0 px-4 font-semibold"
+                >
+                  {importMutation.isPending ? (
+                    "저장 중..."
+                  ) : (
+                    <>
+                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                      병합 저장
+                    </>
+                  )}
+                </Button>
+              </div>
             )}
-          </CardContent>
-          <CardFooter>
-            <Button
-              onClick={handleImport}
-              disabled={parsedData.length === 0 || importMutation.isPending}
-              className="w-full sm:w-auto"
-            >
-              {importMutation.isPending ? (
-                "데이터 저장 중..."
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  전체 데이터 교체
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </Card>
 
-        {parsedData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
-                데이터 미리보기 (상위 5건)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>업소명</TableHead>
-                    <TableHead>업종</TableHead>
-                    <TableHead>주요품목</TableHead>
-                    <TableHead>가격</TableHead>
-                    <TableHead>주소</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {parsedData.slice(0, 5).map((store, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="font-medium">{store.name}</TableCell>
-                      <TableCell>{store.category}</TableCell>
-                      <TableCell>{store.mainItem}</TableCell>
-                      <TableCell>
-                        {store.price.toLocaleString()}원
-                      </TableCell>
-                      <TableCell
-                        className="max-w-[200px] truncate"
-                        title={store.address}
-                      >
-                        {store.address}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
+            {parsedData.length > 0 && (
+              <div className="overflow-hidden rounded-lg border border-border">
+                <div className="border-b border-border bg-muted/40 px-4 py-2">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    데이터 미리보기 (상위 5건)
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="h-9 text-xs">업소명</TableHead>
+                        <TableHead className="h-9 text-xs">업종</TableHead>
+                        <TableHead className="h-9 text-xs">주요품목</TableHead>
+                        <TableHead className="h-9 text-xs text-right">가격</TableHead>
+                        <TableHead className="h-9 text-xs">주소</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {parsedData.slice(0, 5).map((store, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="py-2 text-sm font-medium">
+                            {store.name}
+                          </TableCell>
+                          <TableCell className="py-2 text-sm text-muted-foreground">
+                            {store.category}
+                          </TableCell>
+                          <TableCell className="py-2 text-sm text-muted-foreground">
+                            {store.mainItem}
+                          </TableCell>
+                          <TableCell className="py-2 text-right text-sm tabular-nums">
+                            {store.price.toLocaleString()}원
+                          </TableCell>
+                          <TableCell
+                            className="max-w-[240px] truncate py-2 text-sm text-muted-foreground"
+                            title={store.address}
+                          >
+                            {store.address}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </div>
+        </AdminSection>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ListOrdered className="h-5 w-5 text-primary" />
-              등록 업소 관리{" "}
-              {stores && (
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({stores.length.toLocaleString()}건)
-                </span>
-              )}
-            </CardTitle>
-            <CardDescription>
-              개별 업소를 수정하거나 삭제할 수 있습니다.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <AdminSection
+          icon={<ListOrdered className="h-4 w-4" />}
+          title="업소 관리"
+          description="개별 업소를 수정하거나 삭제할 수 있습니다."
+          right={
+            stores && (
+              <span className="text-xs font-medium text-muted-foreground">
+                총 {stores.length.toLocaleString()}건
+              </span>
+            )
+          }
+        >
+          <div className="space-y-3">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="업소명, 업종, 품목, 주소로 검색"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
+                className="h-10 pl-9"
               />
             </div>
 
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>업소명</TableHead>
-                    <TableHead>업종</TableHead>
-                    <TableHead>품목</TableHead>
-                    <TableHead className="text-right">가격</TableHead>
-                    <TableHead className="hidden md:table-cell">주소</TableHead>
-                    <TableHead>네이버지도</TableHead>
-                    <TableHead className="text-right w-[140px]">관리</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {storesLoading && (
-                    <>
-                      {[1, 2, 3].map((i) => (
-                        <TableRow key={i}>
-                          <TableCell colSpan={7}>
-                            <Skeleton className="h-6 w-full" />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </>
-                  )}
-                  {!storesLoading && filteredStores.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        className="text-center text-muted-foreground py-8"
-                      >
-                        {stores && stores.length > 0
-                          ? "검색 결과가 없습니다."
-                          : "등록된 업소가 없습니다."}
-                      </TableCell>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
+                      <TableHead className="h-10 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        업소명
+                      </TableHead>
+                      <TableHead className="h-10 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        업종
+                      </TableHead>
+                      <TableHead className="h-10 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        품목
+                      </TableHead>
+                      <TableHead className="h-10 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        가격
+                      </TableHead>
+                      <TableHead className="hidden h-10 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:table-cell">
+                        주소
+                      </TableHead>
+                      <TableHead className="h-10 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        네이버지도
+                      </TableHead>
+                      <TableHead className="h-10 w-[120px] text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        관리
+                      </TableHead>
                     </TableRow>
-                  )}
-                  {filteredStores.map((store) => (
-                    <TableRow key={store.id}>
-                      <TableCell className="font-medium">{store.name}</TableCell>
-                      <TableCell>{store.category}</TableCell>
-                      <TableCell>{store.mainItem}</TableCell>
-                      <TableCell className="text-right">
-                        {store.price.toLocaleString()}원
-                      </TableCell>
-                      <TableCell
-                        className="max-w-[240px] truncate hidden md:table-cell"
-                        title={store.address}
-                      >
-                        {store.address}
-                      </TableCell>
-                      <TableCell className="max-w-[280px]">
-                        {store.naverMapUrl ? (
-                          <a
-                            href={store.naverMapUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline text-xs break-all"
-                            title={store.naverMapUrl}
-                          >
-                            <ExternalLink className="h-3 w-3 shrink-0" />
-                            <span className="break-all">{store.naverMapUrl}</span>
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">없음</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditing(store)}
-                            aria-label="수정"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleting(store)}
-                            aria-label="삭제"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {storesLoading && (
+                      <>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <TableRow key={i}>
+                            <TableCell colSpan={7} className="py-3">
+                              <Skeleton className="h-5 w-full" />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    )}
+                    {!storesLoading && filteredStores.length === 0 && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={7}
+                          className="py-12 text-center text-sm text-muted-foreground"
+                        >
+                          {stores && stores.length > 0
+                            ? "검색 결과가 없습니다."
+                            : "등록된 업소가 없습니다."}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {filteredStores.map((store) => (
+                      <TableRow key={store.id} className="hover:bg-muted/30">
+                        <TableCell className="py-3 text-sm font-medium text-foreground">
+                          {store.name}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                            {store.category}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-3 text-sm text-muted-foreground">
+                          {store.mainItem}
+                        </TableCell>
+                        <TableCell className="py-3 text-right text-sm font-semibold tabular-nums text-foreground">
+                          {store.price.toLocaleString()}원
+                        </TableCell>
+                        <TableCell
+                          className="hidden max-w-[240px] truncate py-3 text-sm text-muted-foreground md:table-cell"
+                          title={store.address}
+                        >
+                          {store.address}
+                        </TableCell>
+                        <TableCell className="max-w-[260px] py-3">
+                          {store.naverMapUrl ? (
+                            <a
+                              href={store.naverMapUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline break-all"
+                              title={store.naverMapUrl}
+                            >
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                              <span className="break-all">
+                                {store.naverMapUrl}
+                              </span>
+                            </a>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">
+                              없음
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3 text-right">
+                          <div className="flex justify-end gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => setEditing(store)}
+                              aria-label="수정"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleting(store)}
+                              aria-label="삭제"
+                              className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </AdminSection>
 
         <SuggestionsManager />
       </div>
@@ -962,72 +1163,72 @@ function SuggestionsManager() {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Inbox className="h-5 w-5 text-primary" />
-          정보 수정 제안
-        </CardTitle>
-        <CardDescription>
-          이용자가 보낸 정보 수정 제안을 확인하고 처리합니다.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="pending">
-              대기{" "}
-              {pending && pending.length > 0 ? `(${pending.length})` : ""}
-            </TabsTrigger>
-            <TabsTrigger value="confirmed">
-              확인됨{" "}
-              {confirmed && confirmed.length > 0
-                ? `(${confirmed.length})`
-                : ""}
-            </TabsTrigger>
-            <TabsTrigger value="all">
-              전체 {all && all.length > 0 ? `(${all.length})` : ""}
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="pending" className="mt-4">
-            <SuggestionList
-              items={pending}
-              isLoading={pendingLoading}
-              onConfirm={(s) =>
-                updateMutation.mutate({
-                  id: s.id,
-                  data: { status: "confirmed" },
-                })
-              }
-              onDelete={(s) => setDeleting(s)}
-              showConfirm
-            />
-          </TabsContent>
-          <TabsContent value="confirmed" className="mt-4">
-            <SuggestionList
-              items={confirmed}
-              isLoading={confirmedLoading}
-              onConfirm={() => {}}
-              onDelete={(s) => setDeleting(s)}
-              showConfirm={false}
-            />
-          </TabsContent>
-          <TabsContent value="all" className="mt-4">
-            <SuggestionList
-              items={all}
-              isLoading={allLoading}
-              onConfirm={(s) =>
-                updateMutation.mutate({
-                  id: s.id,
-                  data: { status: "confirmed" },
-                })
-              }
-              onDelete={(s) => setDeleting(s)}
-              showConfirm
-            />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+    <AdminSection
+      icon={<MessageSquare className="h-4 w-4" />}
+      title="정보 수정 제안"
+      description="이용자가 보낸 정보 수정 제안을 확인하고 처리합니다."
+      right={
+        pending && pending.length > 0 ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+            대기 {pending.length}
+          </span>
+        ) : null
+      }
+    >
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="pending" className="text-xs">
+            대기{" "}
+            {pending && pending.length > 0 ? `(${pending.length})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="confirmed" className="text-xs">
+            확인됨{" "}
+            {confirmed && confirmed.length > 0
+              ? `(${confirmed.length})`
+              : ""}
+          </TabsTrigger>
+          <TabsTrigger value="all" className="text-xs">
+            전체 {all && all.length > 0 ? `(${all.length})` : ""}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="pending" className="mt-4">
+          <SuggestionList
+            items={pending}
+            isLoading={pendingLoading}
+            onConfirm={(s) =>
+              updateMutation.mutate({
+                id: s.id,
+                data: { status: "confirmed" },
+              })
+            }
+            onDelete={(s) => setDeleting(s)}
+            showConfirm
+          />
+        </TabsContent>
+        <TabsContent value="confirmed" className="mt-4">
+          <SuggestionList
+            items={confirmed}
+            isLoading={confirmedLoading}
+            onConfirm={() => {}}
+            onDelete={(s) => setDeleting(s)}
+            showConfirm={false}
+          />
+        </TabsContent>
+        <TabsContent value="all" className="mt-4">
+          <SuggestionList
+            items={all}
+            isLoading={allLoading}
+            onConfirm={(s) =>
+              updateMutation.mutate({
+                id: s.id,
+                data: { status: "confirmed" },
+              })
+            }
+            onDelete={(s) => setDeleting(s)}
+            showConfirm
+          />
+        </TabsContent>
+      </Tabs>
       <AlertDialog
         open={!!deleting}
         onOpenChange={(open) => !open && setDeleting(null)}
@@ -1056,7 +1257,7 @@ function SuggestionsManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </AdminSection>
   );
 }
 
@@ -1084,67 +1285,79 @@ function SuggestionList({
   }
   if (!items || items.length === 0) {
     return (
-      <div className="text-center text-muted-foreground py-8 text-sm">
-        표시할 제안이 없습니다.
+      <div className="rounded-lg border border-dashed border-border bg-muted/30 px-6 py-10 text-center">
+        <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+          <Inbox className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          표시할 제안이 없습니다.
+        </p>
       </div>
     );
   }
   return (
-    <div className="space-y-3">
-      {items.map((s) => (
-        <div
-          key={s.id}
-          className="rounded-md border bg-card p-3 space-y-2 shadow-sm"
-        >
-          <div className="flex items-start justify-between gap-2 flex-wrap">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm text-foreground">
-                  {s.storeName ?? `업소 #${s.storeId}`}
-                </span>
-                <Badge
-                  variant={s.status === "confirmed" ? "secondary" : "outline"}
-                  className={
-                    s.status === "confirmed"
-                      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border-amber-200"
-                  }
-                >
-                  {s.status === "confirmed" ? "확인됨" : "대기"}
-                </Badge>
+    <div className="space-y-2.5">
+      {items.map((s) => {
+        const isPending = s.status === "pending";
+        return (
+          <article
+            key={s.id}
+            className="group rounded-lg border border-border bg-card p-3.5 transition-colors hover:border-border/80"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex h-1.5 w-1.5 rounded-full ${
+                      isPending ? "bg-amber-500" : "bg-emerald-500"
+                    }`}
+                  />
+                  <span className="text-sm font-semibold text-foreground">
+                    {s.storeName ?? `업소 #${s.storeId}`}
+                  </span>
+                  <span
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                      isPending
+                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {isPending ? "대기" : "확인됨"}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {new Date(s.createdAt).toLocaleString("ko-KR")}
+                  </span>
+                </div>
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+                  {s.content}
+                </p>
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {new Date(s.createdAt).toLocaleString("ko-KR")}
-              </div>
-            </div>
-            <div className="flex gap-1 shrink-0">
-              {showConfirm && s.status === "pending" && (
+              <div className="flex shrink-0 gap-0.5">
+                {showConfirm && isPending && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onConfirm(s)}
+                    aria-label="확인 처리"
+                    className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => onConfirm(s)}
-                  aria-label="확인 처리"
-                  className="text-emerald-600 hover:text-emerald-700"
+                  onClick={() => onDelete(s)}
+                  aria-label="삭제"
+                  className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <Check className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDelete(s)}
-                aria-label="삭제"
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              </div>
             </div>
-          </div>
-          <p className="text-sm text-foreground whitespace-pre-wrap break-words">
-            {s.content}
-          </p>
-        </div>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
