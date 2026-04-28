@@ -13,6 +13,8 @@ import {
   ListOrdered,
   Search,
   ExternalLink,
+  Inbox,
+  Check,
 } from "lucide-react";
 import {
   useImportStores,
@@ -21,8 +23,19 @@ import {
   useListStores,
   useUpdateStore,
   useDeleteStore,
+  useListSuggestions,
+  useUpdateSuggestion,
+  useDeleteSuggestion,
+  getListSuggestionsQueryKey,
 } from "@workspace/api-client-react";
-import type { Store } from "@workspace/api-client-react";
+import type { Store, Suggestion } from "@workspace/api-client-react";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -188,8 +201,8 @@ function AdminContent() {
     mutation: {
       onSuccess: (data) => {
         toast({
-          title: "데이터 교체 완료",
-          description: `총 ${data.inserted}건의 착한가격업소가 성공적으로 저장되었습니다.`,
+          title: "데이터 병합 완료",
+          description: `신규 ${data.inserted.toLocaleString()}건 / 갱신 ${data.updated.toLocaleString()}건 (총 ${data.total.toLocaleString()}건)`,
         });
         invalidateAll();
         setFile(null);
@@ -369,7 +382,7 @@ function AdminContent() {
           <CardHeader>
             <CardTitle className="text-lg">엑셀 파일 업로드</CardTitle>
             <CardDescription>
-              새로운 데이터로 기존 데이터를 완전히 덮어씁니다. <br />
+              네이버지도 URL을 기준으로 기존 데이터와 병합합니다 (있으면 갱신, 없으면 추가). <br />
               필수 컬럼:{" "}
               <span className="font-medium text-foreground">
                 업종명, 업소명, 주요품목, 가격, 주소, 위도, 경도
@@ -511,7 +524,7 @@ function AdminContent() {
                     <TableHead>품목</TableHead>
                     <TableHead className="text-right">가격</TableHead>
                     <TableHead className="hidden md:table-cell">주소</TableHead>
-                    <TableHead className="hidden lg:table-cell">네이버지도</TableHead>
+                    <TableHead>네이버지도</TableHead>
                     <TableHead className="text-right w-[140px]">관리</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -553,17 +566,17 @@ function AdminContent() {
                       >
                         {store.address}
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell max-w-[200px]">
+                      <TableCell className="max-w-[280px]">
                         {store.naverMapUrl ? (
                           <a
                             href={store.naverMapUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline text-xs truncate max-w-full"
+                            className="inline-flex items-center gap-1 text-primary hover:underline text-xs break-all"
                             title={store.naverMapUrl}
                           >
                             <ExternalLink className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{store.naverMapUrl}</span>
+                            <span className="break-all">{store.naverMapUrl}</span>
                           </a>
                         ) : (
                           <span className="text-muted-foreground text-xs">없음</span>
@@ -597,6 +610,8 @@ function AdminContent() {
             </div>
           </CardContent>
         </Card>
+
+        <SuggestionsManager />
       </div>
 
       <EditStoreDialog
@@ -876,5 +891,260 @@ function EditStoreDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SuggestionsManager() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [tab, setTab] = useState<"pending" | "confirmed" | "all">("pending");
+  const [deleting, setDeleting] = useState<Suggestion | null>(null);
+
+  const { data: pending, isLoading: pendingLoading } = useListSuggestions({
+    status: "pending",
+  });
+  const { data: confirmed, isLoading: confirmedLoading } = useListSuggestions({
+    status: "confirmed",
+  });
+  const { data: all, isLoading: allLoading } = useListSuggestions({
+    status: "all",
+  });
+
+  const invalidateSuggestions = () => {
+    queryClient.invalidateQueries({
+      queryKey: getListSuggestionsQueryKey({ status: "pending" }),
+    });
+    queryClient.invalidateQueries({
+      queryKey: getListSuggestionsQueryKey({ status: "confirmed" }),
+    });
+    queryClient.invalidateQueries({
+      queryKey: getListSuggestionsQueryKey({ status: "all" }),
+    });
+  };
+
+  const updateMutation = useUpdateSuggestion({
+    mutation: {
+      onSuccess: () => {
+        toast({
+          title: "처리 완료",
+          description: "제안이 확인됨으로 변경되었습니다.",
+        });
+        invalidateSuggestions();
+      },
+      onError: (err) => {
+        toast({
+          title: "처리 실패",
+          description: getErrorMessage(err, "상태 변경 중 오류가 발생했습니다."),
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const deleteMutation = useDeleteSuggestion({
+    mutation: {
+      onSuccess: () => {
+        toast({
+          title: "삭제 완료",
+          description: "제안이 삭제되었습니다.",
+        });
+        invalidateSuggestions();
+        setDeleting(null);
+      },
+      onError: (err) => {
+        toast({
+          title: "삭제 실패",
+          description: getErrorMessage(err, "제안 삭제 중 오류가 발생했습니다."),
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Inbox className="h-5 w-5 text-primary" />
+          정보 수정 제안
+        </CardTitle>
+        <CardDescription>
+          이용자가 보낸 정보 수정 제안을 확인하고 처리합니다.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="pending">
+              대기{" "}
+              {pending && pending.length > 0 ? `(${pending.length})` : ""}
+            </TabsTrigger>
+            <TabsTrigger value="confirmed">
+              확인됨{" "}
+              {confirmed && confirmed.length > 0
+                ? `(${confirmed.length})`
+                : ""}
+            </TabsTrigger>
+            <TabsTrigger value="all">
+              전체 {all && all.length > 0 ? `(${all.length})` : ""}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="pending" className="mt-4">
+            <SuggestionList
+              items={pending}
+              isLoading={pendingLoading}
+              onConfirm={(s) =>
+                updateMutation.mutate({
+                  id: s.id,
+                  data: { status: "confirmed" },
+                })
+              }
+              onDelete={(s) => setDeleting(s)}
+              showConfirm
+            />
+          </TabsContent>
+          <TabsContent value="confirmed" className="mt-4">
+            <SuggestionList
+              items={confirmed}
+              isLoading={confirmedLoading}
+              onConfirm={() => {}}
+              onDelete={(s) => setDeleting(s)}
+              showConfirm={false}
+            />
+          </TabsContent>
+          <TabsContent value="all" className="mt-4">
+            <SuggestionList
+              items={all}
+              isLoading={allLoading}
+              onConfirm={(s) =>
+                updateMutation.mutate({
+                  id: s.id,
+                  data: { status: "confirmed" },
+                })
+              }
+              onDelete={(s) => setDeleting(s)}
+              showConfirm
+            />
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+      <AlertDialog
+        open={!!deleting}
+        onOpenChange={(open) => !open && setDeleting(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>제안을 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleting) deleteMutation.mutate({ id: deleting.id });
+              }}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "삭제 중..." : "삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
+  );
+}
+
+function SuggestionList({
+  items,
+  isLoading,
+  onConfirm,
+  onDelete,
+  showConfirm,
+}: {
+  items: Suggestion[] | undefined;
+  isLoading: boolean;
+  onConfirm: (s: Suggestion) => void;
+  onDelete: (s: Suggestion) => void;
+  showConfirm: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-20 w-full" />
+        ))}
+      </div>
+    );
+  }
+  if (!items || items.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8 text-sm">
+        표시할 제안이 없습니다.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {items.map((s) => (
+        <div
+          key={s.id}
+          className="rounded-md border bg-card p-3 space-y-2 shadow-sm"
+        >
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-sm text-foreground">
+                  {s.storeName ?? `업소 #${s.storeId}`}
+                </span>
+                <Badge
+                  variant={s.status === "confirmed" ? "secondary" : "outline"}
+                  className={
+                    s.status === "confirmed"
+                      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200"
+                  }
+                >
+                  {s.status === "confirmed" ? "확인됨" : "대기"}
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {new Date(s.createdAt).toLocaleString("ko-KR")}
+              </div>
+            </div>
+            <div className="flex gap-1 shrink-0">
+              {showConfirm && s.status === "pending" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onConfirm(s)}
+                  aria-label="확인 처리"
+                  className="text-emerald-600 hover:text-emerald-700"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDelete(s)}
+                aria-label="삭제"
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+            {s.content}
+          </p>
+        </div>
+      ))}
+    </div>
   );
 }

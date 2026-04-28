@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ImportStores200 = {
-  inserted: number;
-  total: number;
+export type DeleteSuggestion200 = {
+  deleted: number;
 };

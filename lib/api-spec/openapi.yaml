@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: stores
     description: 착한가격업소 데이터
+  - name: suggestions
+    description: 정보 수정 제안
 paths:
   /healthz:
     get:
@@ -122,8 +124,8 @@ paths:
     post:
       operationId: importStores
       tags: [stores]
-      summary: 엑셀 데이터로 업소 일괄 교체 (관리자)
-      description: 엑셀에서 파싱된 업소 데이터를 받아 전체 데이터를 교체
+      summary: 엑셀 데이터로 업소 병합 (관리자)
+      description: 네이버지도 URL을 기준으로 기존 데이터와 병합 (있으면 update, 없으면 insert)
       requestBody:
         required: true
         content:
@@ -139,21 +141,137 @@ paths:
                 - stores
       responses:
         "200":
-          description: 업데이트 결과
+          description: 병합 결과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportStoresResponse"
+        "400":
+          description: 잘못된 입력
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /suggestions:
+    get:
+      operationId: listSuggestions
+      tags: [suggestions]
+      summary: 정보 수정 제안 목록 (관리자)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, confirmed, all]
+      responses:
+        "200":
+          description: 제안 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Suggestion"
+    post:
+      operationId: createSuggestion
+      tags: [suggestions]
+      summary: 정보 수정 제안 등록 (이용자)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: integer
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+              required:
+                - storeId
+                - content
+      responses:
+        "200":
+          description: 등록 결과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Suggestion"
+        "400":
+          description: 잘못된 입력
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 업소를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /suggestions/{id}:
+    patch:
+      operationId: updateSuggestion
+      tags: [suggestions]
+      summary: 제안 상태 변경 (관리자)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pending, confirmed]
+              required:
+                - status
+      responses:
+        "200":
+          description: 변경된 제안
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Suggestion"
+        "404":
+          description: 제안을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteSuggestion
+      tags: [suggestions]
+      summary: 제안 삭제 (관리자)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 삭제 결과
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  inserted:
-                    type: integer
-                  total:
+                  deleted:
                     type: integer
                 required:
-                  - inserted
-                  - total
-        "400":
-          description: 잘못된 입력
+                  - deleted
+        "404":
+          description: 제안을 찾을 수 없음
           content:
             application/json:
               schema:
@@ -279,10 +397,13 @@ components:
       properties:
         inserted:
           type: integer
+        updated:
+          type: integer
         total:
           type: integer
       required:
         - inserted
+        - updated
         - total
     ErrorResponse:
       type: object
@@ -291,3 +412,28 @@ components:
           type: string
       required:
         - error
+    Suggestion:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: ["string", "null"]
+          description: 업소명 (조회시에만 포함)
+        content:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed]
+        createdAt:
+          type: string
+          description: ISO 8601 timestamp
+      required:
+        - id
+        - storeId
+        - storeName
+        - content
+        - status
+        - createdAt

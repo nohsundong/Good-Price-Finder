@@ -13,6 +13,8 @@ import {
   DeleteStoreParams,
 } from "@workspace/api-zod";
 
+type ImportStats = { inserted: number; updated: number };
+
 const router: IRouter = Router();
 
 router.get("/stores", async (_req, res): Promise<void> => {
@@ -169,38 +171,70 @@ router.post("/stores/import", async (req, res): Promise<void> => {
     return;
   }
 
-  const values: InsertStore[] = incoming.map((s) => ({
-    externalId: s.externalId ?? null,
-    category: s.category,
-    name: s.name,
-    mainItem: s.mainItem,
-    price: s.price,
-    phone: s.phone ?? null,
-    address: s.address,
-    latitude: s.latitude,
-    longitude: s.longitude,
-    naverMapUrl: s.naverMapUrl ?? null,
-  }));
-
-  await db.transaction(async (tx) => {
-    await tx.execute(sql`TRUNCATE TABLE ${storesTable} RESTART IDENTITY`);
-    // Insert in chunks to keep statement size reasonable
-    const chunkSize = 500;
-    for (let i = 0; i < values.length; i += chunkSize) {
-      const chunk = values.slice(i, i + chunkSize);
-      await tx.insert(storesTable).values(chunk);
+  const stats: ImportStats = await db.transaction(async (tx) => {
+    // Build map of existing stores keyed by naverMapUrl (only those with a URL)
+    const existing = await tx
+      .select({ id: storesTable.id, naverMapUrl: storesTable.naverMapUrl })
+      .from(storesTable);
+    const byUrl = new Map<string, number>();
+    for (const row of existing) {
+      if (row.naverMapUrl) byUrl.set(row.naverMapUrl, row.id);
     }
+
+    let inserted = 0;
+    let updated = 0;
+    const toInsert: InsertStore[] = [];
+
+    for (const s of incoming) {
+      const value: InsertStore = {
+        externalId: s.externalId ?? null,
+        category: s.category,
+        name: s.name,
+        mainItem: s.mainItem,
+        price: s.price,
+        phone: s.phone ?? null,
+        address: s.address,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        naverMapUrl: s.naverMapUrl ?? null,
+      };
+
+      const existingId = s.naverMapUrl ? byUrl.get(s.naverMapUrl) : undefined;
+      if (existingId !== undefined) {
+        await tx
+          .update(storesTable)
+          .set(value)
+          .where(eq(storesTable.id, existingId));
+        updated++;
+      } else {
+        toInsert.push(value);
+      }
+    }
+
+    // Bulk insert new rows in chunks
+    const chunkSize = 500;
+    for (let i = 0; i < toInsert.length; i += chunkSize) {
+      const chunk = toInsert.slice(i, i + chunkSize);
+      await tx.insert(storesTable).values(chunk);
+      inserted += chunk.length;
+    }
+
+    return { inserted, updated };
   });
 
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(storesTable);
 
-  req.log.info({ inserted: incoming.length, total: count }, "Stores imported");
+  req.log.info(
+    { inserted: stats.inserted, updated: stats.updated, total: count },
+    "Stores imported (merge)",
+  );
 
   res.json(
     ImportStoresResponse.parse({
-      inserted: incoming.length,
+      inserted: stats.inserted,
+      updated: stats.updated,
       total: count,
     }),
   );

@@ -7,12 +7,19 @@
  */
 
 export * from "./categoryCount";
+export * from "./createSuggestionBody";
 export * from "./deleteStore200";
+export * from "./deleteSuggestion200";
 export * from "./errorResponse";
 export * from "./healthStatus";
-export * from "./importStores200";
 export * from "./importStoresBody";
 export * from "./importStoresResponse";
+export * from "./listSuggestionsParams";
+export * from "./listSuggestionsStatus";
 export * from "./store";
 export * from "./storeInput";
 export * from "./storesStats";
+export * from "./suggestion";
+export * from "./suggestionStatus";
+export * from "./updateSuggestionBody";
+export * from "./updateSuggestionBodyStatus";

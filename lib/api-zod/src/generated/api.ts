@@ -96,8 +96,8 @@ export const DeleteStoreResponse = zod.object({
 });
 
 /**
- * 엑셀에서 파싱된 업소 데이터를 받아 전체 데이터를 교체
- * @summary 엑셀 데이터로 업소 일괄 교체 (관리자)
+ * 네이버지도 URL을 기준으로 기존 데이터와 병합 (있으면 update, 없으면 insert)
+ * @summary 엑셀 데이터로 업소 병합 (관리자)
  */
 export const ImportStoresBody = zod.object({
   stores: zod.array(
@@ -118,5 +118,73 @@ export const ImportStoresBody = zod.object({
 
 export const ImportStoresResponse = zod.object({
   inserted: zod.number(),
+  updated: zod.number(),
   total: zod.number(),
+});
+
+/**
+ * @summary 정보 수정 제안 목록 (관리자)
+ */
+export const ListSuggestionsQueryParams = zod.object({
+  status: zod.enum(["pending", "confirmed", "all"]).optional(),
+});
+
+export const ListSuggestionsResponseItem = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string().nullable().describe("업소명 (조회시에만 포함)"),
+  content: zod.string(),
+  status: zod.enum(["pending", "confirmed"]),
+  createdAt: zod.string().describe("ISO 8601 timestamp"),
+});
+export const ListSuggestionsResponse = zod.array(ListSuggestionsResponseItem);
+
+/**
+ * @summary 정보 수정 제안 등록 (이용자)
+ */
+export const createSuggestionBodyContentMax = 2000;
+
+export const CreateSuggestionBody = zod.object({
+  storeId: zod.number(),
+  content: zod.string().min(1).max(createSuggestionBodyContentMax),
+});
+
+export const CreateSuggestionResponse = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string().nullable().describe("업소명 (조회시에만 포함)"),
+  content: zod.string(),
+  status: zod.enum(["pending", "confirmed"]),
+  createdAt: zod.string().describe("ISO 8601 timestamp"),
+});
+
+/**
+ * @summary 제안 상태 변경 (관리자)
+ */
+export const UpdateSuggestionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateSuggestionBody = zod.object({
+  status: zod.enum(["pending", "confirmed"]),
+});
+
+export const UpdateSuggestionResponse = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string().nullable().describe("업소명 (조회시에만 포함)"),
+  content: zod.string(),
+  status: zod.enum(["pending", "confirmed"]),
+  createdAt: zod.string().describe("ISO 8601 timestamp"),
+});
+
+/**
+ * @summary 제안 삭제 (관리자)
+ */
+export const DeleteSuggestionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteSuggestionResponse = zod.object({
+  deleted: zod.number(),
 });

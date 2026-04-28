@@ -17,14 +17,19 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  CreateSuggestionBody,
   DeleteStore200,
+  DeleteSuggestion200,
   ErrorResponse,
   HealthStatus,
-  ImportStores200,
   ImportStoresBody,
+  ImportStoresResponse,
+  ListSuggestionsParams,
   Store,
   StoreInput,
   StoresStats,
+  Suggestion,
+  UpdateSuggestionBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -434,8 +439,8 @@ export const useDeleteStore = <
 };
 
 /**
- * 엑셀에서 파싱된 업소 데이터를 받아 전체 데이터를 교체
- * @summary 엑셀 데이터로 업소 일괄 교체 (관리자)
+ * 네이버지도 URL을 기준으로 기존 데이터와 병합 (있으면 update, 없으면 insert)
+ * @summary 엑셀 데이터로 업소 병합 (관리자)
  */
 export const getImportStoresUrl = () => {
   return `/api/stores/import`;
@@ -444,8 +449,8 @@ export const getImportStoresUrl = () => {
 export const importStores = async (
   importStoresBody: ImportStoresBody,
   options?: RequestInit,
-): Promise<ImportStores200> => {
-  return customFetch<ImportStores200>(getImportStoresUrl(), {
+): Promise<ImportStoresResponse> => {
+  return customFetch<ImportStoresResponse>(getImportStoresUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -498,7 +503,7 @@ export type ImportStoresMutationBody = BodyType<ImportStoresBody>;
 export type ImportStoresMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary 엑셀 데이터로 업소 일괄 교체 (관리자)
+ * @summary 엑셀 데이터로 업소 병합 (관리자)
  */
 export const useImportStores = <
   TError = ErrorType<ErrorResponse>,
@@ -518,4 +523,355 @@ export const useImportStores = <
   TContext
 > => {
   return useMutation(getImportStoresMutationOptions(options));
+};
+
+/**
+ * @summary 정보 수정 제안 목록 (관리자)
+ */
+export const getListSuggestionsUrl = (params?: ListSuggestionsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/suggestions?${stringifiedParams}`
+    : `/api/suggestions`;
+};
+
+export const listSuggestions = async (
+  params?: ListSuggestionsParams,
+  options?: RequestInit,
+): Promise<Suggestion[]> => {
+  return customFetch<Suggestion[]>(getListSuggestionsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSuggestionsQueryKey = (params?: ListSuggestionsParams) => {
+  return [`/api/suggestions`, ...(params ? [params] : [])] as const;
+};
+
+export const getListSuggestionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSuggestions>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSuggestionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSuggestions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSuggestionsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listSuggestions>>> = ({
+    signal,
+  }) => listSuggestions(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSuggestions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSuggestionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSuggestions>>
+>;
+export type ListSuggestionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary 정보 수정 제안 목록 (관리자)
+ */
+
+export function useListSuggestions<
+  TData = Awaited<ReturnType<typeof listSuggestions>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSuggestionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSuggestions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSuggestionsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary 정보 수정 제안 등록 (이용자)
+ */
+export const getCreateSuggestionUrl = () => {
+  return `/api/suggestions`;
+};
+
+export const createSuggestion = async (
+  createSuggestionBody: CreateSuggestionBody,
+  options?: RequestInit,
+): Promise<Suggestion> => {
+  return customFetch<Suggestion>(getCreateSuggestionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSuggestionBody),
+  });
+};
+
+export const getCreateSuggestionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSuggestion>>,
+    TError,
+    { data: BodyType<CreateSuggestionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSuggestion>>,
+  TError,
+  { data: BodyType<CreateSuggestionBody> },
+  TContext
+> => {
+  const mutationKey = ["createSuggestion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSuggestion>>,
+    { data: BodyType<CreateSuggestionBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createSuggestion(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSuggestionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSuggestion>>
+>;
+export type CreateSuggestionMutationBody = BodyType<CreateSuggestionBody>;
+export type CreateSuggestionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary 정보 수정 제안 등록 (이용자)
+ */
+export const useCreateSuggestion = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSuggestion>>,
+    TError,
+    { data: BodyType<CreateSuggestionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSuggestion>>,
+  TError,
+  { data: BodyType<CreateSuggestionBody> },
+  TContext
+> => {
+  return useMutation(getCreateSuggestionMutationOptions(options));
+};
+
+/**
+ * @summary 제안 상태 변경 (관리자)
+ */
+export const getUpdateSuggestionUrl = (id: number) => {
+  return `/api/suggestions/${id}`;
+};
+
+export const updateSuggestion = async (
+  id: number,
+  updateSuggestionBody: UpdateSuggestionBody,
+  options?: RequestInit,
+): Promise<Suggestion> => {
+  return customFetch<Suggestion>(getUpdateSuggestionUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSuggestionBody),
+  });
+};
+
+export const getUpdateSuggestionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSuggestion>>,
+    TError,
+    { id: number; data: BodyType<UpdateSuggestionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSuggestion>>,
+  TError,
+  { id: number; data: BodyType<UpdateSuggestionBody> },
+  TContext
+> => {
+  const mutationKey = ["updateSuggestion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSuggestion>>,
+    { id: number; data: BodyType<UpdateSuggestionBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateSuggestion(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSuggestionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSuggestion>>
+>;
+export type UpdateSuggestionMutationBody = BodyType<UpdateSuggestionBody>;
+export type UpdateSuggestionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary 제안 상태 변경 (관리자)
+ */
+export const useUpdateSuggestion = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSuggestion>>,
+    TError,
+    { id: number; data: BodyType<UpdateSuggestionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSuggestion>>,
+  TError,
+  { id: number; data: BodyType<UpdateSuggestionBody> },
+  TContext
+> => {
+  return useMutation(getUpdateSuggestionMutationOptions(options));
+};
+
+/**
+ * @summary 제안 삭제 (관리자)
+ */
+export const getDeleteSuggestionUrl = (id: number) => {
+  return `/api/suggestions/${id}`;
+};
+
+export const deleteSuggestion = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteSuggestion200> => {
+  return customFetch<DeleteSuggestion200>(getDeleteSuggestionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSuggestionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSuggestion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSuggestion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteSuggestion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSuggestion>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteSuggestion(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSuggestionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSuggestion>>
+>;
+
+export type DeleteSuggestionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary 제안 삭제 (관리자)
+ */
+export const useDeleteSuggestion = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSuggestion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSuggestion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteSuggestionMutationOptions(options));
 };

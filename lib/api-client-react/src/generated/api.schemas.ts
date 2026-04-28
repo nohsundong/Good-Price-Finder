@@ -76,11 +76,34 @@ export interface StoreInput {
 
 export interface ImportStoresResponse {
   inserted: number;
+  updated: number;
   total: number;
 }
 
 export interface ErrorResponse {
   error: string;
+}
+
+export type SuggestionStatus =
+  (typeof SuggestionStatus)[keyof typeof SuggestionStatus];
+
+export const SuggestionStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+} as const;
+
+export interface Suggestion {
+  id: number;
+  storeId: number;
+  /**
+   * 업소명 (조회시에만 포함)
+   * @nullable
+   */
+  storeName: string | null;
+  content: string;
+  status: SuggestionStatus;
+  /** ISO 8601 timestamp */
+  createdAt: string;
 }
 
 export type DeleteStore200 = {
@@ -91,7 +114,40 @@ export type ImportStoresBody = {
   stores: StoreInput[];
 };
 
-export type ImportStores200 = {
-  inserted: number;
-  total: number;
+export type ListSuggestionsParams = {
+  status?: ListSuggestionsStatus;
+};
+
+export type ListSuggestionsStatus =
+  (typeof ListSuggestionsStatus)[keyof typeof ListSuggestionsStatus];
+
+export const ListSuggestionsStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  all: "all",
+} as const;
+
+export type CreateSuggestionBody = {
+  storeId: number;
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  content: string;
+};
+
+export type UpdateSuggestionBodyStatus =
+  (typeof UpdateSuggestionBodyStatus)[keyof typeof UpdateSuggestionBodyStatus];
+
+export const UpdateSuggestionBodyStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+} as const;
+
+export type UpdateSuggestionBody = {
+  status: UpdateSuggestionBodyStatus;
+};
+
+export type DeleteSuggestion200 = {
+  deleted: number;
 };

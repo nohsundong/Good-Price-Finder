@@ -6,8 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ImportStoresResponse {
-  inserted: number;
-  updated: number;
-  total: number;
-}
+export type CreateSuggestionBody = {
+  storeId: number;
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  content: string;
+};

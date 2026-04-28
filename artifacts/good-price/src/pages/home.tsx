@@ -1,13 +1,23 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { MapPin, Navigation, ArrowUpDown, ExternalLink, Phone, Store as StoreIcon, AlertCircle, Info } from "lucide-react";
-import { useListStores, useGetStoresStats } from "@workspace/api-client-react";
+import { MapPin, Navigation, ArrowUpDown, ExternalLink, Phone, Store as StoreIcon, AlertCircle, Info, Pencil } from "lucide-react";
+import { useListStores, useGetStoresStats, useCreateSuggestion } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useGeolocation, haversineDistance, formatDistance, GeoLocation } from "@/lib/geo";
 
 type Store = {
@@ -51,6 +61,7 @@ export default function Home() {
   const { location, loading: geoLoading, error: geoError } = useGeolocation();
   const [radius, setRadius] = useState<string>("3000"); // Default 3km
   const [sortBy, setSortBy] = useState<string>("distance");
+  const [suggestTarget, setSuggestTarget] = useState<Store | null>(null);
 
   const { data: stores, isLoading: storesLoading, error: storesError } = useListStores();
   const { data: stats, isLoading: statsLoading } = useGetStoresStats();
@@ -249,24 +260,132 @@ export default function Home() {
                     </div>
                   )}
                 </CardContent>
-                {store.naverMapUrl && (
-                  <CardFooter className="pt-0 pb-3">
-                    <Button 
-                      variant="secondary" 
-                      className="w-full text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700" 
+                <CardFooter className="pt-0 pb-3 flex flex-col gap-2">
+                  {store.naverMapUrl && (
+                    <Button
+                      variant="secondary"
+                      className="w-full text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                       asChild
                     >
                       <a href={store.naverMapUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
                         네이버지도 바로가기 <ExternalLink className="h-4 w-4" />
                       </a>
                     </Button>
-                  </CardFooter>
-                )}
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full text-sm font-medium"
+                    onClick={() => setSuggestTarget(store)}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    [정보 수정 제안]
+                  </Button>
+                </CardFooter>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      <SuggestStoreDialog
+        store={suggestTarget}
+        onClose={() => setSuggestTarget(null)}
+      />
     </div>
+  );
+}
+
+function SuggestStoreDialog({
+  store,
+  onClose,
+}: {
+  store: Store | null;
+  onClose: () => void;
+}) {
+  const [content, setContent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const createMutation = useCreateSuggestion();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!store) return;
+    const trimmed = content.trim();
+    if (trimmed.length === 0) {
+      window.alert("수정 내용을 입력해주세요.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createMutation.mutateAsync({
+        data: { storeId: store.id, content: trimmed },
+      });
+      window.alert("요청되었습니다");
+      setContent("");
+      onClose();
+    } catch (err) {
+      const msg =
+        err && typeof err === "object" && "data" in err
+          ? ((err as { data?: { error?: string } }).data?.error ?? null)
+          : null;
+      window.alert(msg ?? "요청 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={!!store}
+      onOpenChange={(open) => {
+        if (!open) {
+          setContent("");
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>정보 수정 제안</DialogTitle>
+          <DialogDescription>
+            {store?.name ? `'${store.name}'` : ""} 업소 정보의 수정이 필요한 부분을 알려주세요.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="suggest-content">수정 내용</Label>
+            <Textarea
+              id="suggest-content"
+              placeholder="예) 가격이 7,000원으로 변경되었습니다."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={5}
+              maxLength={2000}
+              disabled={submitting}
+              required
+            />
+            <div className="text-xs text-muted-foreground text-right">
+              {content.length} / 2000
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setContent("");
+                onClose();
+              }}
+              disabled={submitting}
+            >
+              취소
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "저장 중..." : "저장"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
