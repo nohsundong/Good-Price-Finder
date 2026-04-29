@@ -1,11 +1,11 @@
-import { Router } from "express";  // IRouter 제거 (불필요)
+import { Router } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-const router = Router();  // 타입 추론 사용
+const router = Router();
 
-router.get("/healthz", (_req: any, res: any) => {  // any 타입으로 에러 우회
+router.get("/healthz", (req: any, res: any) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
-  res.json(data);
+  res.status(200).json(data);
 });
 
 export default router;

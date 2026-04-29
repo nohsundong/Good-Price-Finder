@@ -3,7 +3,11 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "noEmitOnError": false,
+    "moduleResolution": "bundler"
   },
   "include": ["src"],
   "references": [
