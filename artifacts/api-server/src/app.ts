@@ -1,17 +1,17 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
+// pino-http 타입 문제 우회: require 사용
+const pinoHttp = require("pino-http");
+
 const app: Express = express();
 
-// 타입 단언으로 강제 미들웨어 처리 (가장 안정적)
 app.use(
-  (pinoHttp({
+  pinoHttp({
     logger,
     serializers: {
-      // req/res any 타입 무시 (pino-http 공식 스펙)
       req(req: any) {
         return {
           id: req.id,
@@ -25,7 +25,7 @@ app.use(
         };
       },
     },
-  }) as express.RequestHandler)  // RequestHandler 타입 사용
+  })
 );
 
 app.use(cors());
