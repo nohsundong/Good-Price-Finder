@@ -1,32 +1,15 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import router from "./routes";
+import router from "./routes/index.js";  // 명시적 .js 경로
 import { logger } from "./lib/logger";
-
-// pino-http 타입 문제 우회: require 사용
-const pinoHttp = require("pino-http");
 
 const app: Express = express();
 
-app.use(
-  pinoHttp({
-    logger,
-    serializers: {
-      req(req: any) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
-      },
-      res(res: any) {
-        return {
-          statusCode: res.statusCode,
-        };
-      },
-    },
-  })
-);
+// 임시 콘솔 로깅 (pino-http 제거)
+app.use((req: any, res: any, next: any) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
 
 app.use(cors());
 app.use(express.json());

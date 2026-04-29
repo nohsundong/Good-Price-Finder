@@ -1,9 +1,9 @@
-import { Router, type IRouter } from "express";
-import healthRouter from "./health";
-import storesRouter from "./stores";
-import suggestionsRouter from "./suggestions";
+import { Router } from "express";
+import healthRouter from "./health.js";     // .js 확장자 추가
+import storesRouter from "./stores.js";
+import suggestionsRouter from "./suggestions.js";
 
-const router: IRouter = Router();
+const router = Router();
 
 router.use(healthRouter);
 router.use(storesRouter);
