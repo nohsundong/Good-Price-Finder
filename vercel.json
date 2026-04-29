@@ -1,11 +1,11 @@
 {
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/api-server run build",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm build",
   "outputDirectory": "artifacts/api-server/dist",
   "framework": null,
   "functions": {
     "artifacts/api-server/dist/vercel.mjs": {
-      "runtime": "nodejs22.x"
+      "runtime": "nodejs20.x"
     }
   },
   "routes": [
