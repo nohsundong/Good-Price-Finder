@@ -1,14 +1,18 @@
 {
-  "installCommand": "pnpm install",
+  "version": 2,
   "buildCommand": "pnpm build",
-  "outputDirectory": "artifacts/api-server/dist",
+  "installCommand": "pnpm install",
   "framework": null,
+  "crons": [],
   "functions": {
-    "artifacts/api-server/dist/vercel.mjs": {
+    "artifacts/api-server/src/index.ts": {
       "runtime": "nodejs20.x"
     }
   },
   "routes": [
-    { "src": "/(.*)", "dest": "artifacts/api-server/dist/vercel.mjs" }
+    {
+      "src": "/api/(.*)",
+      "dest": "artifacts/api-server/src/index.ts"
+    }
   ]
 }
