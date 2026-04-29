@@ -1,30 +1,31 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import * as pinoHttp from "pino-http";  // namespace import로 변경 [web:16]
+import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
 
-// pinoHttp.default() 호출 + Express.Handler 타입 단언
+// 타입 단언으로 강제 미들웨어 처리 (가장 안정적)
 app.use(
-  pinoHttp.default({
+  (pinoHttp({
     logger,
     serializers: {
-      req(req) {
+      // req/res any 타입 무시 (pino-http 공식 스펙)
+      req(req: any) {
         return {
           id: req.id,
           method: req.method,
           url: req.url?.split("?")[0],
         };
       },
-      res(res) {
+      res(res: any) {
         return {
           statusCode: res.statusCode,
         };
       },
     },
-  }) as express.Handler  // 타입 단언 추가
+  }) as express.RequestHandler)  // RequestHandler 타입 사용
 );
 
 app.use(cors());
